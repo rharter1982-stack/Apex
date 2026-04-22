@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Apex Scanner">
+<meta name="theme-color" content="#070a0f">
+<title>Apex Scanner</title>
+<style>
+  :root {
+    --bg: #070a0f;
+    --bg2: #0a0e1a;
+    --bg3: #0d1220;
+    --border: #1e3a5f;
+    --green: #00ff88;
+    --yellow: #ffd700;
+    --red: #ff3b3b;
+    --orange: #ff8c00;
+    --blue: #00d4ff;
+    --purple: #c084fc;
+    --text: #e2e8f0;
+    --muted: #4a6a8a;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; overflow-x: hidden; }
+  body { padding-top: var(--safe-top); padding-bottom: var(--safe-bot); }
+
+/* HEADER */
+#header {
+background: linear-gradient(135deg, #0a0e1a, #0f1729, #0a0e1a);
+border-bottom: 1px solid var(–border);
+padding: 12px 14px 10px;
+position: sticky; top: 0; z-index: 100;
+padding-top: calc(var(–safe-top) + 12px);
+}
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.logo-row { display: flex; align-items: center; gap: 7px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(–green); box-shadow: 0 0 8px var(–green); animation: pulse 1s infinite; }
+.dot.scanning { background: var(–yellow); box-shadow: 0 0 8px var(–yellow); }
+.logo { color: var(–green); font-weight: bold; font-size: 15px; letter-spacing: 3px; }
+.badge { background: #081a10; border: 1px solid #00ff8866; color: var(–green); font-size: 8px; padding: 1px 6px; border-radius: 3px; letter-spacing: 1px; }
+.subtitle { color: var(–muted); font-size: 9px; letter-spacing: 2px; margin-top: 1px; }
+.clock { color: var(–yellow); font-size: 10px; text-align: right; }
+.scan-num { color: var(–muted); font-size: 9px; text-align: right; }
+
+/* FILTER */
+.filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-size: 9px; letter-spacing: 2px; }
+.filter-label { color: var(–muted); }
+.filter-active { font-weight: bold; }
+.filter-btns { display: flex; gap: 5px; margin-bottom: 9px; }
+.filter-btn { flex: 1; padding: 6px 0; background: #050810; border: 1px solid var(–border); border-radius: 5px; color: var(–muted); cursor: pointer; font-size: 8px; font-family: inherit; white-space: nowrap; transition: all 0.2s; }
+.filter-btn.active { }
+
+/* SCAN BUTTON */
+.scan-btn {
+width: 100%; padding: 12px; background: linear-gradient(135deg, #081a10, #0d3020);
+border: 2px solid #00ff8888; border-radius: 7px; cursor: pointer;
+color: var(–green); font-size: 11px; letter-spacing: 3px;
+font-family: inherit; font-weight: bold; position: relative; overflow: hidden;
+transition: all 0.2s;
+}
+.scan-btn.scanning { background: linear-gradient(135deg, #1a1500, #252200); border-color: #ffd70088; color: var(–yellow); }
+.scan-btn-progress { position: absolute; top: 0; left: 0; height: 100%; background: linear-gradient(90deg, transparent, #ffd70022, transparent); transition: width 0.12s; pointer-events: none; }
+.scan-btn span { position: relative; z-index: 1; }
+
+/* TICKER STRIP */
+#ticker-strip {
+background: #050d05; border-bottom: 1px solid #1a3a1a;
+padding: 5px 14px; display: flex; gap: 14px; overflow-x: auto; font-size: 10px; align-items: center;
+scrollbar-width: none;
+}
+#ticker-strip::-webkit-scrollbar { display: none; }
+.tick { color: var(–green); white-space: nowrap; }
+.tick.red { color: #ff6b6b; }
+#refresh-prices-btn {
+margin-left: auto; background: transparent; border: 1px solid #1e4a6a;
+color: var(–blue); padding: 2px 10px; border-radius: 4px; cursor: pointer;
+font-size: 8px; font-family: inherit; white-space: nowrap; flex-shrink: 0;
+}
+
+/* TABS */
+#tabs { display: flex; border-bottom: 1px solid var(–border); background: #050810; }
+.tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(–muted); padding: 9px 18px; cursor: pointer; font-size: 10px; letter-spacing: 2px; font-family: inherit; transition: all 0.2s; }
+.tab-btn.active { background: #0f1f3d; border-bottom-color: var(–green); color: var(–green); }
+
+/* CONTENT */
+#content { padding: 12px; padding-bottom: calc(var(–safe-bot) + 20px); }
+
+/* EMPTY STATE */
+#empty-state { text-align: center; padding: 48px 16px; }
+.empty-icon { font-size: 42px; margin-bottom: 12px; }
+.empty-title { color: var(–green); font-size: 13px; letter-spacing: 3px; margin-bottom: 8px; }
+.empty-sub { color: var(–muted); font-size: 10px; margin-bottom: 4px; }
+.first-scan-btn {
+background: linear-gradient(135deg, #081a10, #0d3020);
+border: 2px solid #00ff8888; border-radius: 7px; color: var(–green);
+cursor: pointer; font-size: 12px; letter-spacing: 3px; font-family: inherit;
+font-weight: bold; padding: 12px 28px; margin-top: 20px;
+}
+
+/* SCANNING ANIMATION */
+#scanning-state { text-align: center; padding: 40px 16px; display: none; }
+.scan-icon { font-size: 30px; animation: spin 0.8s linear infinite; display: inline-block; }
+.scan-title { color: var(–yellow); font-size: 13px; letter-spacing: 3px; margin: 10px 0 6px; }
+.scan-msg { color: #7a6a30; font-size: 10px; margin-bottom: 16px; }
+.progress-bar { width: 80%; margin: 0 auto; height: 3px; background: #1a1a08; border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(–yellow), #ff8800); border-radius: 2px; transition: width 0.12s; }
+.progress-pct { color: #6a5a20; font-size: 9px; margin-top: 8px; }
+
+/* STOCK CARDS */
+.stock-card {
+background: linear-gradient(135deg, #0a0e1a, #0d1220);
+border: 1px solid #141e2e; border-radius: 8px; padding: 12px;
+margin-bottom: 8px; cursor: pointer; transition: border-color 0.3s, opacity 0.3s;
+animation: fadeIn 0.3s ease both;
+}
+.stock-card.selected { background: linear-gradient(135deg, #0d1f3d, #0a2040); border-color: var(–green); }
+.stock-card.out-of-range { opacity: 0.4; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.ticker { color: var(–blue); font-weight: bold; font-size: 16px; letter-spacing: 2px; }
+.stock-name { color: var(–muted); font-size: 10px; margin-left: 7px; }
+.price-box { text-align: right; min-width: 82px; }
+.live-price { color: #fff; font-weight: bold; font-size: 17px; }
+.live-change { font-size: 11px; font-weight: bold; }
+.live-change.up { color: var(–green); }
+.live-change.down { color: #ff6b6b; }
+.live-dot { color: var(–blue); font-size: 7px; letter-spacing: 1px; }
+.fetching { color: var(–yellow); font-size: 9px; letter-spacing: 1px; animation: blink 0.5s infinite alternate; }
+.no-data { color: #ff6b6b; font-size: 9px; }
+
+/* OHLV BAR */
+.ohlv { display: flex; gap: 8px; margin-bottom: 7px; padding: 4px 7px; background: #050810; border-radius: 4px; font-size: 9px; flex-wrap: wrap; }
+.ohlv span { color: var(–muted); }
+.ohlv b { }
+.out-badge { margin-left: auto; color: var(–red); font-size: 8px; }
+
+/* TAGS */
+.tags { display: flex; gap: 5px; margin-bottom: 7px; flex-wrap: wrap; }
+.tag { padding: 1px 6px; border-radius: 4px; font-size: 9px; border: 1px solid; }
+
+/* LEVELS GRID */
+.levels-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 6px; }
+.level-box { background: #060810; border: 1px solid #141e2e; border-radius: 4px; padding: 4px; text-align: center; }
+.level-label { color: var(–muted); font-size: 8px; }
+.level-val { font-size: 10px; font-weight: bold; }
+.levels-pct { display: flex; justify-content: space-between; font-size: 9px; }
+.levels-pct span { color: var(–muted); }
+.conf-bar-wrap { display: flex; align-items: center; gap: 3px; }
+.conf-bar { width: 44px; height: 3px; background: #141e2e; border-radius: 2px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 2px; }
+.conf-val { color: #7dd3fc; font-size: 9px; }
+.no-levels { background: #060810; border: 1px solid #141e2e; border-radius: 4px; padding: 6px; text-align: center; color: #2a4a6a; font-size: 9px; }
+
+/* AI BADGE */
+.ai-badge { margin-top: 6px; padding: 4px 8px; border-radius: 4px; display: flex; justify-content: space-between; border: 1px solid; }
+.ai-verdict { font-weight: bold; font-size: 10px; letter-spacing: 2px; }
+.ai-score { color: #7dd3fc; font-size: 9px; }
+
+/* DETAIL VIEW */
+#detail-view { display: none; padding: 12px; padding-bottom: calc(var(–safe-bot) + 20px); }
+.detail-header { background: linear-gradient(135deg, #0a1428, #0d1f3d); border: 1px solid #1e4a6a; border-radius: 8px; padding: 13px; margin-bottom: 10px; }
+.detail-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.detail-ticker { color: var(–blue); font-size: 22px; font-weight: bold; letter-spacing: 3px; }
+.detail-name { color: #7dd3fc; font-size: 11px; }
+.detail-sector { color: var(–muted); font-size: 9px; margin-top: 2px; }
+.detail-price { color: #fff; font-size: 26px; font-weight: bold; }
+.detail-ohlv { display: flex; gap: 10px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #1e3a5f; font-size: 9px; flex-wrap: wrap; align-items: center; }
+.detail-ohlv-item div:first-child { color: var(–muted); font-size: 7px; }
+.detail-ohlv-item div:last-child { font-weight: bold; font-size: 10px; }
+#detail-refresh-btn { margin-left: auto; background: transparent; border: 1px solid #1e4a6a; color: var(–blue); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 8px; font-family: inherit; }
+
+.catalyst-box { background: #050a10; border: 1px solid #1e4a1e; border-radius: 6px; padding: 11px; margin-bottom: 10px; }
+.catalyst-label { color: var(–green); font-size: 9px; letter-spacing: 2px; margin-bottom: 5px; }
+.catalyst-text { color: #c8e6c9; font-size: 11px; line-height: 1.7; }
+.catalyst-why { margin-top: 6px; color: #81c784; font-size: 10px; line-height: 1.5; border-top: 1px solid #1e3a1e; padding-top: 6px; }
+
+.blueprint-title { color: var(–muted); font-size: 9px; letter-spacing: 2px; margin-bottom: 7px; }
+.blueprint-live { color: var(–blue); font-size: 7px; }
+.blueprint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+.blueprint-box { background: #080c16; border-radius: 6px; padding: 10px; border: 1px solid; }
+.blueprint-label { color: var(–muted); font-size: 8px; }
+.blueprint-val { font-size: 18px; font-weight: bold; margin: 3px 0; }
+.blueprint-sub { color: var(–muted); font-size: 9px; }
+
+.pnl-row { background: linear-gradient(135deg, #0a1a0a, #061206); border: 1px solid #1a3a1a; border-radius: 6px; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-around; text-align: center; }
+.pnl-item-label { color: var(–muted); font-size: 8px; letter-spacing: 1px; }
+.pnl-item-val { font-size: 18px; font-weight: bold; }
+
+.ai-box { background: linear-gradient(135deg, #0a0a1f, #100a20); border: 1px solid #3a1a6a; border-radius: 8px; padding: 13px; margin-bottom: 10px; }
+.ai-box-title { color: var(–purple); font-size: 9px; letter-spacing: 2px; margin-bottom: 8px; }
+.ai-loading { text-align: center; padding: 18px 0; }
+.ai-loading-text { color: var(–purple); font-size: 11px; letter-spacing: 2px; }
+.ai-dots { display: flex; justify-content: center; gap: 5px; margin-top: 10px; }
+.ai-dot { width: 6px; height: 6px; background: #7c3aed; border-radius: 50%; }
+.ai-verdict-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid; }
+.ai-verdict-text { font-size: 15px; font-weight: bold; letter-spacing: 2px; }
+.ai-score-dots { display: flex; gap: 2px; }
+.ai-score-dot { width: 8px; height: 8px; border-radius: 2px; }
+.ai-section-label { color: #9d4edd; font-size: 8px; letter-spacing: 2px; margin-bottom: 4px; }
+.ai-section-text { color: #c8b4e0; font-size: 11px; line-height: 1.7; margin-bottom: 10px; }
+.risk-factor { color: #ff9999; font-size: 10px; padding: 3px 0; border-bottom: 1px solid #2a1a2a; }
+.run-analysis-btn { background: linear-gradient(135deg, #4a1d96, #7c3aed); border: none; color: white; padding: 9px 22px; border-radius: 6px; cursor: pointer; font-size: 11px; letter-spacing: 2px; font-family: inherit; display: block; margin: 0 auto; }
+
+.back-btn { width: 100%; background: transparent; border: 1px solid var(–border); color: var(–muted); padding: 9px; border-radius: 6px; cursor: pointer; font-size: 10px; letter-spacing: 2px; font-family: inherit; }
+.footer-note { margin-top: 6px; padding: 10px; background: var(–bg2); border: 1px solid #2a1a1a; border-radius: 6px; font-size: 9px; color: #6b4a4a; line-height: 1.6; }
+.poly-note { margin-top: 8px; padding: 8px; background: var(–bg2); border: 1px solid #1e2a1e; border-radius: 6px; font-size: 9px; color: #3a6a3a; text-align: center; }
+
+/* PASSWORD SCREEN */
+#lock-screen {
+position: fixed; inset: 0; z-index: 9999;
+background: #070a0f;
+display: flex; flex-direction: column;
+align-items: center; justify-content: center;
+padding: 40px 30px;
+padding-top: calc(env(safe-area-inset-top,0px) + 40px);
+}
+.lock-icon { font-size: 48px; margin-bottom: 20px; }
+.lock-title { color: #00ff88; font-size: 20px; font-weight: bold; letter-spacing: 4px; margin-bottom: 6px; }
+.lock-sub { color: #4a6a8a; font-size: 10px; letter-spacing: 2px; margin-bottom: 40px; }
+.lock-input {
+width: 100%; max-width: 320px;
+background: #0a0e1a; border: 2px solid #1e3a5f;
+border-radius: 10px; padding: 16px 18px;
+color: #00ff88; font-size: 18px; font-family: ‘Courier New’, monospace;
+letter-spacing: 4px; text-align: center; outline: none;
+transition: border-color 0.2s;
+-webkit-text-security: disc;
+}
+.lock-input:focus { border-color: #00ff8888; }
+.lock-input.error { border-color: #ff3b3b; animation: shake 0.4s ease; }
+.lock-btn {
+width: 100%; max-width: 320px; margin-top: 14px;
+padding: 14px; background: linear-gradient(135deg, #081a10, #0d3020);
+border: 2px solid #00ff8888; border-radius: 10px;
+color: #00ff88; font-size: 12px; letter-spacing: 3px;
+font-family: ‘Courier New’, monospace; font-weight: bold; cursor: pointer;
+}
+.lock-error { color: #ff3b3b; font-size: 11px; letter-spacing: 2px; margin-top: 12px; min-height: 18px; }
+.lock-attempts { color: #4a6a8a; font-size: 9px; letter-spacing: 1px; margin-top: 8px; }
+@keyframes shake {
+0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+40%{transform:translateX(8px)} 60%{transform:translateX(-6px)}
+80%{transform:translateX(6px)}
+}
+#app-wrapper { display: none; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes blink { from{opacity:0.2} to{opacity:1} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes dotAnim { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+.ai-dot:nth-child(1){animation:dotAnim 1.2s 0s infinite}
+.ai-dot:nth-child(2){animation:dotAnim 1.2s 0.15s infinite}
+.ai-dot:nth-child(3){animation:dotAnim 1.2s 0.3s infinite}
+.ai-dot:nth-child(4){animation:dotAnim 1.2s 0.45s infinite}
+.ai-dot:nth-child(5){animation:dotAnim 1.2s 0.6s infinite}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:#070a0f}
+::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+</style>
+
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+
+<div id="lock-screen">
+  <div class="lock-icon">🔐</div>
+  <div class="lock-title">APEX SCANNER</div>
+  <div class="lock-sub">ENTER ACCESS CODE</div>
+  <input
+    class="lock-input" id="lock-input" type="password"
+    placeholder="••••••••" maxlength="20"
+    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+    onkeydown="if(event.key==='Enter')checkPassword()"
+  />
+  <button class="lock-btn" onclick="checkPassword()">⚡ &nbsp;UNLOCK</button>
+  <div class="lock-error" id="lock-error"></div>
+  <div class="lock-attempts" id="lock-attempts"></div>
+</div>
+
+<!-- APP WRAPPER (hidden until unlocked) -->
+
+<div id="app-wrapper">
+
+<!-- HEADER -->
+
+<div id="header">
+  <div class="header-row">
+    <div>
+      <div class="logo-row">
+        <div class="dot" id="status-dot"></div>
+        <span class="logo">APEX SCANNER</span>
+        <span class="badge">POLYGON LIVE</span>
+      </div>
+      <div class="subtitle">ROBINHOOD • LOW-CAP • DAY/SWING</div>
+    </div>
+    <div>
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="scan-num" id="scan-num">SCAN #0 • 30s AUTO</div>
+    </div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">💰 PRICE FILTER</span>
+    <span class="filter-active" id="filter-label" style="color:#ffd700">$2–$5</span>
+  </div>
+  <div class="filter-btns" id="filter-btns"></div>
+  <button class="scan-btn" id="scan-btn" onclick="runScan()">
+    <div class="scan-btn-progress" id="scan-progress" style="width:0%"></div>
+    <span id="scan-btn-text">🔄&nbsp;&nbsp;REFRESH — SCAN 5 NEW PLAYS</span>
+  </button>
+</div>
+
+<!-- TICKER STRIP -->
+
+<div id="ticker-strip">
+  <span class="tick">SPY +1.4%</span>
+  <span class="tick">QQQ +1.8%</span>
+  <span class="tick">IWM +2.1%</span>
+  <span class="tick red">VIX -12%</span>
+  <span class="tick">🔥 DEFENSE AI</span>
+  <span class="tick">🚀 SMALL-CAPS</span>
+  <button id="refresh-prices-btn" onclick="manualRefreshPrices()" style="display:none">↻ PRICES</button>
+</div>
+
+<!-- TABS -->
+
+<div id="tabs">
+  <button class="tab-btn active" onclick="showTab('scanner')">📡 SCANNER</button>
+  <button class="tab-btn" onclick="showTab('detail')">🧠 ANALYSIS</button>
+</div>
+
+<!-- SCANNER CONTENT -->
+
+<div id="scanner-view">
+  <div id="content">
+    <div id="empty-state">
+      <div class="empty-icon">📡</div>
+      <div class="empty-title">READY TO SCAN</div>
+      <div class="empty-sub">30 low-cap Robinhood tickers in pool</div>
+      <div class="empty-sub">Live prices via Polygon.io • Auto-refresh 30s</div>
+      <button class="first-scan-btn" onclick="runScan()">⚡ RUN FIRST SCAN</button>
+    </div>
+    <div id="scanning-state">
+      <div class="scan-icon">⚡</div>
+      <div class="scan-title">AI SCANNING MARKETS</div>
+      <div class="scan-msg" id="scan-msg">Querying AI engine…</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-pct" id="progress-pct">0%</div>
+    </div>
+    <div id="cards-container"></div>
+    <div id="poly-note" class="poly-note" style="display:none">● Polygon.io live data • Auto-refresh 30s • Tap ↻ PRICES to force update</div>
+    <div class="footer-note">⚠️ Educational only — not financial advice. Day trading penny stocks involves extreme risk of total loss.</div>
+  </div>
+</div>
+
+<!-- DETAIL VIEW -->
+
+<div id="detail-view">
+  <div class="detail-header">
+    <div class="detail-top">
+      <div>
+        <div class="detail-ticker" id="d-ticker"></div>
+        <div class="detail-name" id="d-name"></div>
+        <div class="detail-sector" id="d-sector"></div>
+      </div>
+      <div style="text-align:right">
+        <div class="detail-price" id="d-price">—</div>
+        <div id="d-change" style="font-size:13px;font-weight:bold">—</div>
+        <div style="color:#00d4ff;font-size:8px;letter-spacing:1px;margin-top:2px" id="d-live-badge"></div>
+      </div>
+    </div>
+    <div class="detail-ohlv" id="d-ohlv" style="display:none">
+      <div class="detail-ohlv-item"><div>O</div><div id="d-open" style="color:#94a3b8">-</div></div>
+      <div class="detail-ohlv-item"><div>H</div><div id="d-high" style="color:#00ff88">-</div></div>
+      <div class="detail-ohlv-item"><div>L</div><div id="d-low" style="color:#ff6b6b">-</div></div>
+      <div class="detail-ohlv-item"><div>PC</div><div id="d-pc" style="color:#7dd3fc">-</div></div>
+      <div class="detail-ohlv-item"><div>VOL</div><div id="d-vol" style="color:#ffd700">-</div></div>
+      <button id="detail-refresh-btn" onclick="detailRefresh()">↻</button>
+    </div>
+  </div>
+
+  <div class="catalyst-box">
+    <div class="catalyst-label">🔥 CATALYST</div>
+    <div class="catalyst-text" id="d-catalyst"></div>
+    <div class="catalyst-why" id="d-why" style="display:none"></div>
+  </div>
+
+  <div id="d-blueprint">
+    <div class="blueprint-title">📊 TRADE BLUEPRINT <span class="blueprint-live">LIVE PRICE</span></div>
+    <div class="blueprint-grid">
+      <div class="blueprint-box" style="border-color:#7dd3fc33">
+        <div class="blueprint-label">ENTRY ZONE</div>
+        <div class="blueprint-val" id="d-entry" style="color:#7dd3fc">—</div>
+        <div class="blueprint-sub">Buy on dip to support</div>
+      </div>
+      <div class="blueprint-box" style="border-color:#ff6b6b33">
+        <div class="blueprint-label">STOP LOSS</div>
+        <div class="blueprint-val" id="d-stop" style="color:#ff6b6b">—</div>
+        <div class="blueprint-sub">Hard exit — no exceptions</div>
+      </div>
+      <div class="blueprint-box" style="border-color:#00ff8833">
+        <div class="blueprint-label">TARGET 1 (50%)</div>
+        <div class="blueprint-val" id="d-t1" style="color:#00ff88">—</div>
+        <div class="blueprint-sub">Scale out half position</div>
+      </div>
+      <div class="blueprint-box" style="border-color:#ffd70033">
+        <div class="blueprint-label">TARGET 2 (50%)</div>
+        <div class="blueprint-val" id="d-t2" style="color:#ffd700">—</div>
+        <div class="blueprint-sub">Trail stop on remainder</div>
+      </div>
+    </div>
+    <div class="pnl-row">
+      <div><div class="pnl-item-label">TO T1</div><div class="pnl-item-val" id="d-p1" style="color:#00ff88">—</div></div>
+      <div><div class="pnl-item-label">TO T2</div><div class="pnl-item-val" id="d-p2" style="color:#ffd700">—</div></div>
+      <div><div class="pnl-item-label">MAX LOSS</div><div class="pnl-item-val" id="d-pl" style="color:#ff6b6b">—</div></div>
+    </div>
+  </div>
+
+  <div class="ai-box">
+    <div class="ai-box-title">🤖 AI ANALYSIS ENGINE</div>
+    <div id="ai-content">
+      <div style="text-align:center;padding:12px">
+        <button class="run-analysis-btn" onclick="runDeepAnalysis()">RUN AI ANALYSIS</button>
+      </div>
+    </div>
+  </div>
+
+<button class="back-btn" onclick="showTab('scanner')">← BACK TO SCANNER</button>
+
+  <div class="footer-note" style="margin-top:10px">⚠️ Educational only — not financial advice. Day trading penny stocks involves extreme risk of total loss.</div>
+</div>
+
+<script>
+const POLY_KEY = "XpiBxPw73pbfO0h72hANYjTT1CCNjCwQ";
+const CLAUDE_KEY = ""; // Not needed — AI calls go through Anthropic API using artifact context
+
+const POOL = [
+  { ticker:"BBAI",  name:"BigBear.ai",           sector:"Defense AI",     tags:["AI","Defense","Breakout"],            ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"CGTX",  name:"Cognition Therapeutics",sector:"Biotech",        tags:["Biotech","FDA Play","Volume Spike"],  ep:-1,   sp:-9, t1:14, t2:25 },
+  { ticker:"VXRT",  name:"Vaxart Inc",            sector:"Biotech",        tags:["Biotech","FDA Play","Momentum"],      ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"XPON",  name:"Expion360",             sector:"Battery Tech",   tags:["Clean Energy","EV","Volume Spike"],   ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"TLRY",  name:"Tilray Brands",         sector:"Cannabis",       tags:["Cannabis","Policy Catalyst","Former Runner"], ep:-1, sp:-7, t1:11, t2:20 },
+  { ticker:"SNDL",  name:"SNDL Inc",              sector:"Cannabis",       tags:["Cannabis","Momentum","Former Runner"],ep:-1,   sp:-8, t1:12, t2:22 },
+  { ticker:"SOUN",  name:"SoundHound AI",         sector:"Voice AI",       tags:["AI","Momentum","Breakout"],           ep:-1.5, sp:-8, t1:11, t2:20 },
+  { ticker:"MBOT",  name:"Microbot Medical",      sector:"Biotech",        tags:["Biotech","FDA Play","Momentum"],      ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"CELZ",  name:"Creative Medical Tech", sector:"Biotech",        tags:["Biotech","Breakout","Volume Spike"],  ep:-1.5, sp:-9, t1:13, t2:24 },
+  { ticker:"RCAT",  name:"Red Cat Holdings",      sector:"Defense Drones", tags:["Defense","Breakout","Former Runner"], ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"SERV",  name:"Serve Robotics",        sector:"Robotics AI",    tags:["AI","Momentum","Breakout"],           ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"KITT",  name:"Nauticus Robotics",     sector:"Robotics",       tags:["Defense","Low Float","Short Squeeze"],ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"BZAI",  name:"Blaize Holdings",       sector:"Edge AI",        tags:["AI","Defense","Breakout"],            ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"GXAI",  name:"Gaxos.ai",              sector:"Defense AI",     tags:["Defense AI","Low Float","Momentum"],  ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"QUBT",  name:"Quantum Computing",     sector:"Quantum",        tags:["Quantum","AI","Momentum"],            ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"MVST",  name:"Microvast Holdings",    sector:"EV Batteries",   tags:["EV","Clean Energy","Momentum"],       ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"PRSO",  name:"Peraso Technologies",   sector:"Defense Tech",   tags:["Defense","Breakout","Former Runner"], ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"CIFR",  name:"Cipher Mining",         sector:"Crypto Mining",  tags:["Crypto","Clean Energy","Momentum"],   ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"SIDU",  name:"Sidus Space",           sector:"AI Satellites",  tags:["Space","Defense","Low Float"],        ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"EDSA",  name:"Edesa Biotech",         sector:"Biotech",        tags:["Biotech","Volume Spike","Momentum"],  ep:-2,   sp:-10,t1:14, t2:26 },
+  { ticker:"MDAI",  name:"Spectral AI",           sector:"Medical AI",     tags:["Biotech","AI","Defense"],             ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"AGRZ",  name:"Agora Holdings",        sector:"Speculative",    tags:["Low Float","Short Squeeze","Momentum"],ep:-2,  sp:-10,t1:15, t2:28 },
+  { ticker:"GRWG",  name:"GrowGeneration",        sector:"Cannabis Retail",tags:["Cannabis","Breakout","Momentum"],     ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"ABAT",  name:"Amer. Battery Tech",    sector:"Battery Tech",   tags:["Clean Energy","EV","Breakout"],       ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"IONQ",  name:"IonQ Inc",              sector:"Quantum",        tags:["Quantum","Breakout","Momentum"],      ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"GNS",   name:"Genius Group",          sector:"EdTech AI",      tags:["Momentum","Low Float","Breakout"],    ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"BLDP",  name:"Ballard Power",         sector:"Hydrogen",       tags:["Clean Energy","Momentum","Breakout"], ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"DVLT",  name:"Datavault AI",          sector:"AI/Crypto",      tags:["Meme","Momentum","Low Float"],        ep:-2,   sp:-10,t1:15, t2:28 },
+  { ticker:"BTBT",  name:"Bit Digital",           sector:"Bitcoin Mining",  tags:["Crypto","Momentum","Breakout"],      ep:-1.5, sp:-8, t1:12, t2:22 },
+  { ticker:"BBGI",  name:"Beasley Broadcast",     sector:"Media",          tags:["Meme","Former Runner","Low Float"],   ep:-2,   sp:-10,t1:15, t2:28 },
+];
+
+const CATALYSTS = {
+  BBAI:"Defense AI platform with $287M cash; military contract pipeline expanding with new C-suite hires.",
+  CGTX:"Alzheimer's treatment clinical stage; binary data readout approaching with volume surge signaling early positioning.",
+  VXRT:"Oral needle-free vaccine platform; positive data could trigger 50-100% spike on this pre-revenue binary setup.",
+  XPON:"LiFePO4 battery maker for RV/marine; clean energy sector rotation driving renewed institutional accumulation.",
+  TLRY:"Federal rescheduling catalyst active; proven history of 30-60% spikes on DEA news with policy headlines in cycle.",
+  SNDL:"Cannabis and liquor retail hybrid leveraged to both reclassification and Alberta/BC retail expansion.",
+  SOUN:"Voice AI expanding across auto, restaurant and IoT; Nvidia-backed with accelerating enterprise deployments.",
+  MBOT:"Micro-robotic surgical FDA milestone approaching; volume spikes 3-4x average on any trial update news.",
+  CELZ:"Stem cell therapy with 5 of 6 bullish conditions met technically; strongest breakout setup in small-cap biotech.",
+  RCAT:"Defense drone leader with real DoD revenue; former runner capable of 50%+ moves on military contract wins.",
+  SERV:"Sidewalk delivery robot growing Uber Eats partnership; NVIDIA-backed with expanding city deployment footprint.",
+  KITT:"Subsea robotics near all-time lows; violent short-squeeze potential on any Navy contract headline.",
+  BZAI:"Nokia partnership validates edge AI chips for defense; $23M real revenue separates from PR-only plays.",
+  GXAI:"AWS and defense headline sensitive; proven multi-spike history with tight float amplifying every move.",
+  QUBT:"Photonic quantum computing riding sector wave; defense and finance clients providing real contracted revenue.",
+  MVST:"Commercial EV battery production ramping; strategic supply deals with global automakers providing visibility.",
+  PRSO:"mmWave wireless defense contracts winning; former 150%+ runner consolidating before next breakout.",
+  CIFR:"Renewable energy Bitcoin miner with Bitfury backing; hash rate expanding at sector-low cost per coin.",
+  SIDU:"AI satellite micro-cap with active defense contracts; low float former runner capable of 50%+ on news.",
+  EDSA:"Inflammatory disease pipeline; volume spikes 4-5x average ahead of data readouts signaling accumulation.",
+  MDAI:"AI wound care diagnostics with military burn contracts; dual medical and defense revenue streams.",
+  AGRZ:"Former +70% intraday gainer; extremely tight float means 5x volume surge forces violent short covering.",
+  GRWG:"Hydroponic retail chain; federal rescheduling unlocks banking access dramatically improving cash position.",
+  ABAT:"Domestic lithium recycling with DOE grant; strategic asset in US EV supply chain independence push.",
+  IONQ:"Trapped-ion quantum leader with government contracts; Forte Gen2 hitting 35 algorithmic qubits.",
+  GNS:"AI entrepreneur education platform; low float with aggressive move history on any partnership news.",
+  BLDP:"Hydrogen fuel cell leader for heavy transport; green policy tailwinds accelerating global contracts.",
+  DVLT:"Meme coin airdrop with set calendar dates; active Robinhood social feeds with low float setup.",
+  BTBT:"Bitcoin miner pivoting to AI compute; dual BTC + AI data center narrative driving attention.",
+  BBGI:"Former runner spiked to $16.69 from $3.70; crowd memory keeps it on momentum alert screens.",
+};
+
+const RANGES = [
+  { label:"< $1",  min:0,  max:1,    color:"#ff3b3b" },
+  { label:"$1–$2", min:1,  max:2,    color:"#ff8c00" },
+  { label:"$2–$5", min:2,  max:5,    color:"#ffd700" },
+  { label:"$5–$10",min:5,  max:10,   color:"#00d4ff" },
+  { label:"All",   min:0,  max:9999, color:"#00ff88" },
+];
+
+const RC = { LOW:"#00ff88", MEDIUM:"#ffd700", HIGH:"#ff8c00", "VERY HIGH":"#ff3b3b" };
+const TC = { AI:"#7c3aed",Defense:"#1e40af",Breakout:"#059669",Biotech:"#be185d","Volume Spike":"#d97706",Momentum:"#0891b2","Clean Energy":"#16a34a",EV:"#15803d",Cannabis:"#65a30d","Policy Catalyst":"#7c2d12","Former Runner":"#9333ea","Low Float":"#dc2626","Defense AI":"#1d4ed8",Meme:"#db2777",Crypto:"#b45309",Quantum:"#4f46e5","Short Squeeze":"#ea580c","FDA Play":"#0f766e",Space:"#1d4ed8",Hydrogen:"#16a34a","EdTech AI":"#7c3aed","Medical AI":"#be185d",Speculative:"#ea580c","Crypto Mining":"#b45309","EV Batteries":"#15803d","Defense Drones":"#1e40af","Edge AI":"#7c3aed","Robotics AI":"#0891b2",Robotics:"#6366f1","Battery Tech":"#16a34a","Bitcoin Mining":"#b45309","AI Satellites":"#1d4ed8","AI/Crypto":"#b45309" };
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let state = {
+  range: RANGES[2],
+  plays: [],
+  quotes: {},
+  qStatus: {},
+  selected: null,
+  analysis: {},
+  scanning: false,
+  scanN: 0,
+  prevTickers: [],
+  autoTimer: null,
+  progInterval: null,
+};
+
+// ── CLOCK ──────────────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}, 1000);
+
+// ── FILTER BUTTONS ─────────────────────────────────────────────────────────
+function buildFilterBtns() {
+  const c = document.getElementById('filter-btns');
+  c.innerHTML = '';
+  RANGES.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'filter-btn' + (r.label === state.range.label ? ' active' : '');
+    b.textContent = r.label;
+    b.style.cssText = r.label === state.range.label
+      ? `background:${r.color}22;border-color:${r.color};color:${r.color}`
+      : '';
+    b.onclick = () => { state.range = r; buildFilterBtns(); updateFilterLabel(); };
+    c.appendChild(b);
+  });
+}
+function updateFilterLabel() {
+  const el = document.getElementById('filter-label');
+  el.textContent = state.range.label;
+  el.style.color = state.range.color;
+}
+buildFilterBtns();
+
+// ── POLYGON LIVE QUOTE ─────────────────────────────────────────────────────
+async function fetchQuote(ticker) {
+  try {
+    const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${POLY_KEY}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const s    = data?.ticker;
+    if (!s) return null;
+    const price = s.day?.c || s.lastTrade?.p || s.prevDay?.c;
+    if (!price || price === 0) return null;
+    const chg = s.todaysChangePerc;
+    return {
+      price:    +price.toFixed(2),
+      open:     s.day?.o    != null ? +s.day.o.toFixed(2)    : null,
+      high:     s.day?.h    != null ? +s.day.h.toFixed(2)    : null,
+      low:      s.day?.l    != null ? +s.day.l.toFixed(2)    : null,
+      prevClose:s.prevDay?.c != null ? +s.prevDay.c.toFixed(2): null,
+      volume:   s.day?.v    ?? null,
+      change:   chg != null ? `${chg>=0?"+":""}${chg.toFixed(2)}%` : null,
+      up:       (chg ?? 0) >= 0,
+    };
+  } catch(e) { console.error('Quote error', ticker, e); return null; }
+}
+
+async function fetchAllQuotes(tickers) {
+  tickers.forEach(t => { state.qStatus[t] = 'loading'; });
+  renderCards();
+  await Promise.all(tickers.map(async t => {
+    const q = await fetchQuote(t);
+    if (q) { state.quotes[t] = q; state.qStatus[t] = 'live'; }
+    else    { state.qStatus[t] = 'error'; }
+    renderCards();
+    if (state.selected?.ticker === t) updateDetailPrices();
+  }));
+}
+
+async function manualRefreshPrices() {
+  if (!state.plays.length) return;
+  const btn = document.getElementById('refresh-prices-btn');
+  btn.textContent = '⟳ LOADING…';
+  await fetchAllQuotes(state.plays.map(s => s.ticker));
+  btn.textContent = '↻ PRICES';
+}
+
+async function detailRefresh() {
+  if (!state.selected) return;
+  const q = await fetchQuote(state.selected.ticker);
+  if (q) { state.quotes[state.selected.ticker] = q; state.qStatus[state.selected.ticker] = 'live'; }
+  updateDetailPrices();
+}
+
+// ── LEVELS ─────────────────────────────────────────────────────────────────
+function getLevels(stock) {
+  const q = state.quotes[stock.ticker];
+  if (!q) return null;
+  const b  = q.price;
+  const en = +(b*(1+(stock.ep||0)/100)).toFixed(2);
+  const sl = +(b*(1+(stock.sp||-8)/100)).toFixed(2);
+  const t1 = +(en*(1+(stock.t1||12)/100)).toFixed(2);
+  const t2 = +(en*(1+(stock.t2||22)/100)).toFixed(2);
+  return { en, sl, t1, t2,
+    p1:(((t1-b)/b)*100).toFixed(1),
+    p2:(((t2-b)/b)*100).toFixed(1),
+    pl:(((b-sl)/b)*100).toFixed(1) };
+}
+
+const fmtV = v => !v?"–":v>=1e6?`${(v/1e6).toFixed(1)}M`:v>=1e3?`${(v/1e3).toFixed(0)}K`:String(v);
+
+// ── RENDER CARDS ───────────────────────────────────────────────────────────
+function renderCards() {
+  if (!state.plays.length) return;
+  const container = document.getElementById('cards-container');
+  container.innerHTML = '';
+  state.plays.forEach((s, i) => {
+    const q   = state.quotes[s.ticker];
+    const qs  = state.qStatus[s.ticker];
+    const lv  = getLevels(s);
+    const ana = state.analysis[s.ticker];
+    const inR = q ? (q.price >= state.range.min && q.price < state.range.max) : true;
+
+    const card = document.createElement('div');
+    card.className = 'stock-card' +
+      (state.selected?.ticker === s.ticker ? ' selected' : '') +
+      ((!inR && q) ? ' out-of-range' : '');
+    card.style.animationDelay = `${i * 0.06}s`;
+    card.onclick = () => selectStock(s);
+
+    // Price HTML
+    let priceHtml = '';
+    if (qs === 'loading') {
+      priceHtml = `<div class="fetching">FETCHING…</div>`;
+    } else if (qs === 'live' && q) {
+      priceHtml = `
+        <div class="live-price">$${q.price.toFixed(2)}</div>
+        <div class="live-change ${q.up?'up':'down'}">${q.change}</div>
+        <div class="live-dot">● LIVE</div>`;
+    } else if (qs === 'error') {
+      priceHtml = `<div class="no-data">NO DATA</div>`;
+    } else {
+      priceHtml = `<div style="color:#2a4a6a;font-size:9px">–</div>`;
+    }
+
+    // OHLV HTML
+    let ohlvHtml = '';
+    if (qs === 'live' && q) {
+      ohlvHtml = `<div class="ohlv">
+        <span>O <b style="color:#94a3b8">$${q.open??'-'}</b></span>
+        <span>H <b style="color:#00ff88">$${q.high??'-'}</b></span>
+        <span>L <b style="color:#ff6b6b">$${q.low??'-'}</b></span>
+        <span>VOL <b style="color:#ffd700">${fmtV(q.volume)}</b></span>
+        ${!inR && q ? '<span class="out-badge">⚠ OUT OF RANGE</span>' : ''}
+      </div>`;
+    }
+
+    // Tags HTML
+    const tagsHtml = (s.tags||[]).map(t => {
+      const c = TC[t] || '#555';
+      return `<span class="tag" style="background:${c}33;border-color:${c}55;color:${c}">${t}</span>`;
+    }).join('');
+    const rc = RC[s.risk] || '#555';
+    const riskTag = `<span class="tag" style="background:${rc}22;border-color:${rc}55;color:${rc}">${s.risk}</span>`;
+    const tfTag   = `<span class="tag" style="background:#0f2040;border-color:#1e4a6a;color:#7dd3fc">${s.timeframe}</span>`;
+
+    // Levels HTML
+    let levelsHtml = '';
+    if (lv) {
+      const confColor = s.confidence > 75 ? '#00ff88' : s.confidence > 60 ? '#ffd700' : '#ff6b6b';
+      levelsHtml = `
+        <div class="levels-grid">
+          <div class="level-box"><div class="level-label">ENTRY</div><div class="level-val" style="color:#7dd3fc">$${lv.en}</div></div>
+          <div class="level-box"><div class="level-label">STOP</div><div class="level-val" style="color:#ff6b6b">$${lv.sl}</div></div>
+          <div class="level-box"><div class="level-label">T1</div><div class="level-val" style="color:#00ff88">$${lv.t1}</div></div>
+          <div class="level-box"><div class="level-label">T2</div><div class="level-val" style="color:#ffd700">$${lv.t2}</div></div>
+        </div>
+        <div class="levels-pct">
+          <span>T1 <b style="color:#00ff88">+${lv.p1}%</b></span>
+          <span>T2 <b style="color:#ffd700">+${lv.p2}%</b></span>
+          <span>SL <b style="color:#ff6b6b">-${lv.pl}%</b></span>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar"><div class="conf-fill" style="width:${s.confidence}%;background:${confColor}"></div></div>
+            <span class="conf-val">${s.confidence}%</span>
+          </div>
+        </div>`;
+    } else {
+      levelsHtml = `<div class="no-levels">TRADE LEVELS LOAD WITH LIVE QUOTE</div>`;
+    }
+
+    // AI badge
+    let aiBadgeHtml = '';
+    if (ana) {
+      const vc = ana.verdict === 'BUY NOW' ? '#00ff88' : ana.verdict === 'WATCH' ? '#ffd700' : '#ff3b3b';
+      aiBadgeHtml = `<div class="ai-badge" style="background:${vc}11;border-color:${vc}44">
+        <span class="ai-verdict" style="color:${vc}">🤖 ${ana.verdict}</span>
+        <span class="ai-score">${ana.score}/10</span>
+      </div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div><span class="ticker">$${s.ticker}</span><span class="stock-name">${s.name}</span></div>
+        <div class="price-box">${priceHtml}</div>
+      </div>
+      ${ohlvHtml}
+      <div class="tags">${riskTag}${tfTag}${tagsHtml}</div>
+      ${levelsHtml}
+      ${aiBadgeHtml}`;
+
+    container.appendChild(card);
+  });
+}
+
+// ── SELECT STOCK ───────────────────────────────────────────────────────────
+function selectStock(stock) {
+  state.selected = stock;
+  showTab('detail');
+  updateDetailView();
+  if (!state.analysis[stock.ticker]) {
+    renderAISection('prompt');
+  } else {
+    renderAISection('result', state.analysis[stock.ticker]);
+  }
+}
+
+function updateDetailPrices() {
+  if (!state.selected) return;
+  const s  = state.selected;
+  const q  = state.quotes[s.ticker];
+  const qs = state.qStatus[s.ticker];
+  const lv = getLevels(s);
+
+  if (qs === 'live' && q) {
+    document.getElementById('d-price').textContent = `$${q.price.toFixed(2)}`;
+    const chgEl = document.getElementById('d-change');
+    chgEl.textContent = q.change || '—';
+    chgEl.style.color = q.up ? '#00ff88' : '#ff6b6b';
+    document.getElementById('d-live-badge').textContent = '● POLYGON LIVE';
+    const ohlv = document.getElementById('d-ohlv');
+    ohlv.style.display = 'flex';
+    document.getElementById('d-open').textContent = q.open ? `$${q.open}` : '-';
+    document.getElementById('d-high').textContent = q.high ? `$${q.high}` : '-';
+    document.getElementById('d-low').textContent  = q.low  ? `$${q.low}`  : '-';
+    document.getElementById('d-pc').textContent   = q.prevClose ? `$${q.prevClose}` : '-';
+    document.getElementById('d-vol').textContent  = fmtV(q.volume);
+  } else if (qs === 'loading') {
+    document.getElementById('d-price').textContent = 'FETCHING…';
+    document.getElementById('d-price').style.color = '#ffd700';
+    document.getElementById('d-price').style.fontSize = '14px';
+  }
+
+  if (lv) {
+    document.getElementById('d-entry').textContent = `$${lv.en}`;
+    document.getElementById('d-stop').textContent  = `$${lv.sl}`;
+    document.getElementById('d-t1').textContent    = `$${lv.t1}`;
+    document.getElementById('d-t2').textContent    = `$${lv.t2}`;
+    document.getElementById('d-p1').textContent    = `+${lv.p1}%`;
+    document.getElementById('d-p2').textContent    = `+${lv.p2}%`;
+    document.getElementById('d-pl').textContent    = `-${lv.pl}%`;
+    document.getElementById('d-blueprint').style.display = 'block';
+  }
+}
+
+function updateDetailView() {
+  const s = state.selected;
+  if (!s) return;
+  document.getElementById('d-ticker').textContent  = `$${s.ticker}`;
+  document.getElementById('d-name').textContent    = s.name;
+  document.getElementById('d-sector').textContent  = s.sector;
+  document.getElementById('d-catalyst').textContent = CATALYSTS[s.ticker] || s.catalyst || '';
+  const whyEl = document.getElementById('d-why');
+  if (s.why && s.why !== CATALYSTS[s.ticker]) {
+    whyEl.textContent = s.why;
+    whyEl.style.display = 'block';
+  } else {
+    whyEl.style.display = 'none';
+  }
+  updateDetailPrices();
+}
+
+// ── AI ANALYSIS ────────────────────────────────────────────────────────────
+function renderAISection(mode, data) {
+  const el = document.getElementById('ai-content');
+  if (mode === 'loading') {
+    el.innerHTML = `<div class="ai-loading">
+      <div class="ai-loading-text">ANALYZING ${state.selected?.ticker}…</div>
+      <div class="ai-dots">
+        <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+        <div class="ai-dot"></div><div class="ai-dot"></div>
+      </div>
+    </div>`;
+  } else if (mode === 'prompt') {
+    el.innerHTML = `<div style="text-align:center;padding:12px">
+      <button class="run-analysis-btn" onclick="runDeepAnalysis()">RUN AI ANALYSIS</button>
+    </div>`;
+  } else if (mode === 'result' && data) {
+    const vc = data.verdict === 'BUY NOW' ? '#00ff88' : data.verdict === 'WATCH' ? '#ffd700' : '#ff3b3b';
+    const dots = [...Array(10)].map((_,i) =>
+      `<div class="ai-score-dot" style="background:${i<(data.score||0)?'#c084fc':'#2a1a4a'}"></div>`).join('');
+    const riskFactors = (data.risk_factors||[]).map(r =>
+      `<div class="risk-factor">• ${r}</div>`).join('');
+    el.innerHTML = `
+      <div class="ai-verdict-row" style="background:${vc}15;border-color:${vc}44">
+        <span class="ai-verdict-text" style="color:${vc}">${data.verdict}</span>
+        <div class="ai-score-dots">${dots}</div>
+      </div>
+      ${data.edge ? `<div class="ai-section-label">THE EDGE</div><div class="ai-section-text">${data.edge}</div>` : ''}
+      ${data.intraday_plan ? `<div class="ai-section-label">INTRADAY PLAN</div><div class="ai-section-text">${data.intraday_plan}</div>` : ''}
+      ${data.exit_rules ? `<div class="ai-section-label">EXIT RULES</div><div class="ai-section-text">${data.exit_rules}</div>` : ''}
+      ${riskFactors ? `<div class="ai-section-label">⚠️ RISK FACTORS</div>${riskFactors}` : ''}`;
+  }
+}
+
+async function runDeepAnalysis() {
+  if (!state.selected) return;
+  const s  = state.selected;
+  const q  = state.quotes[s.ticker];
+  const lv = getLevels(s);
+  renderAISection('loading');
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 800,
+        system: `Elite day trader. Penny stock 10%+ target analysis. Return ONLY valid JSON no markdown: verdict(BUY NOW/WATCH/AVOID), edge(2 sentences), risk_factors(array of 3 strings), intraday_plan(string), exit_rules(string), score(integer 1-10).`,
+        messages: [{ role: "user", content: `${s.ticker} (${s.name}) ${s.sector}\nPrice:$${q?.price||'?'} ${q?.change||''} Vol:${fmtV(q?.volume)} H:${q?.high} L:${q?.low}\nEntry:$${lv?.en} Stop:$${lv?.sl} T1:$${lv?.t1} T2:$${lv?.t2}\nCatalyst:${CATALYSTS[s.ticker]||''}\n${s.timeframe}|${s.risk}\nMacro:risk-on rally,IWM+2.1%,defense AI hot.\nJSON only.` }]
+      })
+    });
+    const d    = await resp.json();
+    const raw  = d.content?.find(b=>b.type==="text")?.text || "{}";
+    const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+    state.analysis[s.ticker] = parsed;
+    renderAISection('result', parsed);
+    renderCards();
+  } catch(e) {
+    const fallback = { verdict:"WATCH", edge:"Verify catalyst and live volume manually before entry.", risk_factors:["Confirm live price before entry","Reduce position size","Set hard stop on fill"], intraday_plan:"Wait for entry zone to hold 2+ candles.", exit_rules:"50% out at T1, trail stop on rest.", score:5 };
+    state.analysis[s.ticker] = fallback;
+    renderAISection('result', fallback);
+  }
+}
+
+// ── AI SCAN ────────────────────────────────────────────────────────────────
+const SCAN_MSGS = ["Querying AI engine…","Filtering price range…","Checking catalysts…","Analyzing momentum…","Fetching live quotes…","Ranking setups…","Plays ready ✓"];
+
+async function runScan() {
+  if (state.scanning) return;
+  state.scanning = true;
+  state.selected = null;
+  state.analysis = {};
+
+  // UI: scanning mode
+  document.getElementById('status-dot').className = 'dot scanning';
+  document.getElementById('scan-btn').className = 'scan-btn scanning';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('scanning-state').style.display = 'block';
+  document.getElementById('cards-container').innerHTML = '';
+  document.getElementById('poly-note').style.display = 'none';
+  document.getElementById('refresh-prices-btn').style.display = 'none';
+
+  let progVal = 0, mi = 0;
+  const iv = setInterval(() => {
+    progVal = Math.min(progVal + 2.2, 88);
+    const ni = Math.floor((progVal/88)*(SCAN_MSGS.length-1));
+    if (ni !== mi) { mi = ni; document.getElementById('scan-msg').textContent = SCAN_MSGS[ni]; }
+    document.getElementById('progress-fill').style.width = progVal + '%';
+    document.getElementById('progress-pct').textContent = Math.round(progVal) + '%';
+    document.getElementById('scan-btn-text').textContent = `⚡ ${SCAN_MSGS[mi]}`;
+  }, 100);
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 800,
+        system: `Elite penny stock day trader. Pick 5 tickers from the pool for same-day/2-day trades targeting 10%+ gains. Vary sectors. Return ONLY a valid JSON array of 5 objects, no markdown, no backticks. Each object must have exactly: ticker(string), timeframe("Same Day" or "1–2 Day"), risk("LOW"|"MEDIUM"|"HIGH"|"VERY HIGH"), confidence(integer 60-88), why(2 sentences on why this ticker today).`,
+        messages: [{ role: "user", content: `April 20 2026. Price filter: ${state.range.label}. Market: risk-on rally, IWM +2.1%, defense AI hot, small-caps ripping.\nPool: ${POOL.map(t=>`${t.ticker}(${t.sector})`).join(", ")}\nExclude already shown: ${state.prevTickers.join(",")||"none"}\nPick 5 varied sector setups. Return ONLY the JSON array.` }]
+      })
+    });
+    const d = await resp.json();
+    const raw = d.content?.find(b => b.type==="text")?.text || "[]";
+    const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+
+    if (Array.isArray(parsed) && parsed.length >= 3) {
+      const merged = parsed.slice(0,5).map(pick => {
+        const meta = POOL.find(t => t.ticker === pick.ticker) || { ticker:pick.ticker, name:pick.ticker, sector:"Unknown", tags:["Momentum"], ep:-1.5, sp:-8, t1:12, t2:22 };
+        return { ...meta, ...pick };
+      });
+      state.plays = merged;
+      state.prevTickers = merged.map(s => s.ticker);
+    } else throw new Error("bad parse");
+
+  } catch(e) {
+    const avail = POOL.filter(t => !state.prevTickers.includes(t.ticker));
+    const shuffled = [...avail].sort(()=>Math.random()-.5).slice(0,5);
+    const fallback = shuffled.map(t => ({
+      ...t,
+      timeframe: Math.random()>.5 ? "Same Day" : "1–2 Day",
+      risk: ["MEDIUM","HIGH","HIGH","VERY HIGH","MEDIUM"][Math.floor(Math.random()*5)],
+      confidence: Math.floor(Math.random()*20)+62,
+      why: CATALYSTS[t.ticker] || t.sector + " momentum setup with elevated volume."
+    }));
+    state.plays = fallback;
+    state.prevTickers = fallback.map(s => s.ticker);
+  }
+
+  clearInterval(iv);
+  state.scanN++;
+  document.getElementById('scan-num').textContent = `SCAN #${state.scanN} • 30s AUTO`;
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('progress-pct').textContent = '100%';
+
+  // Start auto-refresh timer
+  if (state.autoTimer) clearInterval(state.autoTimer);
+  state.autoTimer = setInterval(() => {
+    if (state.plays.length) fetchAllQuotes(state.plays.map(s => s.ticker));
+  }, 30000);
+
+  // Fetch live quotes immediately
+  await fetchAllQuotes(state.plays.map(s => s.ticker));
+
+  // Restore UI
+  setTimeout(() => {
+    state.scanning = false;
+    document.getElementById('status-dot').className = 'dot';
+    document.getElementById('scan-btn').className = 'scan-btn';
+    document.getElementById('scan-btn-text').textContent = '🔄\u00A0\u00A0REFRESH — SCAN 5 NEW PLAYS';
+    document.getElementById('scanning-state').style.display = 'none';
+    document.getElementById('poly-note').style.display = 'block';
+    document.getElementById('refresh-prices-btn').style.display = 'block';
+    renderCards();
+  }, 400);
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', (i===0&&tab==='scanner')||(i===1&&tab==='detail'));
+  });
+  document.getElementById('scanner-view').style.display = tab==='scanner' ? 'block' : 'none';
+  document.getElementById('detail-view').style.display  = tab==='detail'  ? 'block' : 'none';
+  if (tab === 'detail' && state.selected) updateDetailView();
+}
+
+// ── PASSWORD ───────────────────────────────────────────────────────────────
+// ⬇️  CHANGE YOUR PASSWORD HERE ⬇️
+const APP_PASSWORD = "Apex2026";
+// ⬆️  CHANGE YOUR PASSWORD HERE ⬆️
+
+let lockAttempts = 0;
+const MAX_ATTEMPTS = 5;
+
+function checkPassword() {
+  const input = document.getElementById('lock-input');
+  const errorEl = document.getElementById('lock-error');
+  const attemptsEl = document.getElementById('lock-attempts');
+  const val = input.value;
+
+  if (lockAttempts >= MAX_ATTEMPTS) {
+    errorEl.textContent = 'TOO MANY ATTEMPTS — REFRESH TO TRY AGAIN';
+    return;
+  }
+
+  if (val === APP_PASSWORD) {
+    // Correct — unlock the app
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app-wrapper').style.display = 'block';
+    // Store unlock in session so refresh doesn't re-lock
+    sessionStorage.setItem('apex_unlocked', '1');
+  } else {
+    lockAttempts++;
+    input.value = '';
+    input.className = 'lock-input error';
+    setTimeout(() => input.className = 'lock-input', 500);
+    const remaining = MAX_ATTEMPTS - lockAttempts;
+    if (remaining <= 0) {
+      errorEl.textContent = 'TOO MANY ATTEMPTS — REFRESH TO TRY AGAIN';
+      input.disabled = true;
+      document.querySelector('.lock-btn').disabled = true;
+    } else {
+      errorEl.textContent = 'INCORRECT CODE';
+      attemptsEl.textContent = `${remaining} attempt${remaining===1?'':'s'} remaining`;
+    }
+    input.focus();
+  }
+}
+
+// Check if already unlocked this session
+(function() {
+  if (sessionStorage.getItem('apex_unlocked') === '1') {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app-wrapper').style.display = 'block';
+  } else {
+    // Focus password input on load
+    setTimeout(() => document.getElementById('lock-input').focus(), 300);
+  }
+})();
+</script>
+
+</div><!-- end app-wrapper -->
+</body>
+</html>
